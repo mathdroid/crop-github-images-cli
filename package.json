@@ -1,0 +1,33 @@
+{
+  "name": "crop-github-images-cli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "repository": "mathdroid/crop-github-images-cli",
+  "bin": {
+    "crop-github-images": "cli.js"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "files": [
+    "cli.js"
+  ],
+  "keywords": [
+    "cli-app",
+    "cli",
+    "github",
+    "gist",
+    "images",
+    "image",
+    "img",
+    "rickroll",
+    "profile"
+  ],
+  "dependencies": {
+    "canvas": "^2.4.1",
+    "image-clipper": "^0.4.4",
+    "meow": "^5.0.0",
+    "update-notifier": "^2.5.0"
+  }
+}
