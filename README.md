@@ -16,6 +16,14 @@ To
 $ npx crop-github-images-cli <path-to-image>
 ```
 
+## Issue
+
+Right now, images MUST be 727x561 px (you can use resizer or cropper before using the CLI)
+
+## How to pin them in Github
+
+[Here](https://gist.github.com/gr2m/1a8af488e0c61bb627c24eecfd6148fd)
+
 ## Notes
 
 Have fun!
