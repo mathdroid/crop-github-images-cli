@@ -26,7 +26,9 @@
   ],
   "dependencies": {
     "canvas": "^2.4.1",
+    "gifwrap": "^0.7.5",
     "image-clipper": "^0.4.4",
+    "jimp": "^0.6.1",
     "meow": "^5.0.0",
     "update-notifier": "^2.5.0"
   }
