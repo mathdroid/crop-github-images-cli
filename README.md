@@ -18,7 +18,7 @@ $ npx crop-github-images-cli <path-to-image-or-gif>
 
 ## Issue
 
-Right now, images MUST be 727x561 px (you can use resizer or cropper before using the CLI)
+Right now, images MUST have width of EXACTLY 727px, and minimum height of 513px. You can use resizer or cropper before using the CLI. Image will be cropped from the top left.
 
 ## How to pin them in Github
 
