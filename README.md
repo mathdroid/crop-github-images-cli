@@ -19,7 +19,8 @@ To
 ## Requirements
 
 Node >= 8
-npm/npx
+
+`npm`/`npx`
 
 ## Issue
 
