@@ -2,6 +2,12 @@
 
 > Crop your images and gifs for your GitHub Profile!
 
+## Usage
+
+```sh
+$ npx crop-github-images-cli <path-to-image-or-gif>
+```
+
 From
 
 ![](gist.jpg)
@@ -10,11 +16,10 @@ To
 
 ![](result.png)
 
-## Usage
+## Requirements
 
-```sh
-$ npx crop-github-images-cli <path-to-image-or-gif>
-```
+Node >= 8
+npm/npx
 
 ## Issue
 
