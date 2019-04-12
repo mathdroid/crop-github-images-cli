@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 "use strict";
 
-const { GifFrame, GifUtil, BitmapImage } = require("gifwrap");
-const Jimp = require("jimp");
+const sharp = require("sharp");
+const execa = require("execa");
+const gifsicle = require("gifsicle");
 const updateNotifier = require("update-notifier");
 const meow = require("meow");
 
@@ -51,80 +52,44 @@ const getXY = index => {
   return { x, y };
 };
 
-const cropFrame = image => {
-  const cropped = [];
-  for (let i = 0; i < 6; i++) {
-    const clone = image.clone();
-    const { x, y } = getXY(i);
-    clone.crop(x, y, CUT_WIDTH, CUT_HEIGHT);
-    cropped.push(clone);
-  }
-  return cropped;
-};
-
-const cropGithubGifs = async path => {
+const cropImage = async path => {
   try {
-    const source = await GifUtil.read(path);
-    const { frames } = source;
-    let croppedGifs = [];
-    let frameIndex = 1;
-    for (const frame of frames) {
-      console.log(`Processing frame ${frameIndex} of ${frames.length}`);
-      const buf = frame.bitmap.data;
-      frame.scanAllCoords((x, y, bi) => {
-        buf[bi + 3] = 0xff;
-      });
-
-      let jimpToCrop = new Jimp(frame.bitmap.width, frame.bitmap.height, 0);
-      jimpToCrop.bitmap.data = frame.bitmap.data;
-      jimpToCrop.resize(CONTAINER_WIDTH, Jimp.AUTO);
-
-      const frameToCrop = await Jimp.read(jimpToCrop);
-
-      const cropped = cropFrame(frameToCrop).map(img => {
-        return new GifFrame(img.bitmap);
-      });
-
-      cropped.forEach((croppedFrame, i) => {
-        croppedFrame.scanAllCoords((x, y, bi) => {
-          buf[bi + 3] = 0xff;
-        });
-        croppedGifs[i] = croppedGifs[i]
-          ? [...croppedGifs[i], croppedFrame]
-          : [croppedFrame];
-      });
-
-      frameIndex++;
+    const [ext, ...rest] = path.split(".").reverse();
+    const image = sharp(path).resize(CONTAINER_WIDTH);
+    for (let i = 0; i < 6; i++) {
+      const filename = `${i}.${ext}`;
+      const { x, y } = getXY(i);
+      await image
+        .clone()
+        .extract({ left: x, top: y, width: CUT_WIDTH, height: CUT_HEIGHT })
+        .toFile(filename);
+      console.log(`Successfully cropped ${filename}.`);
     }
-
-    croppedGifs.forEach(async (croppedFrames, i) => {
-      console.log(
-        `Quantizing Dekker value for gif ${i} (this might take a while)`
-      );
-      GifUtil.quantizeDekker(croppedFrames);
-      await GifUtil.write(`${i}.gif`, croppedFrames);
-      console.log(`saved ${i}.gif`);
-    });
-  } catch (error) {
-    console.error(error);
+  } catch (e) {
+    console.error(e);
   }
 };
 
-const cropGithubImages = async path => {
-  const image = await Jimp.read(path);
-
-  image.resize(CONTAINER_WIDTH, Jimp.AUTO);
-  const cropped = cropFrame(image);
-
-  for (let i = 0; i < cropped.length; i++) {
-    const clone = cropped[i];
-    await clone.writeAsync(`${i}.jpg`);
-    console.log(i, "has been written.");
+const cropGif = async path => {
+  const resized = "resized.gif";
+  await execa(gifsicle, ["--resize", "727x_", "-o", resized, path]);
+  for (let i = 0; i < 6; i++) {
+    const filename = `${i}.gif`;
+    const { x, y } = getXY(i);
+    await execa(gifsicle, [
+      "--crop",
+      `${x},${y}+${CUT_WIDTH}x${CUT_HEIGHT}`,
+      "--output",
+      filename,
+      resized
+    ]);
+    console.log(`Successfully cropped ${filename}.`);
   }
 };
 
-if (cli.input[0].endsWith(".gif")) {
-  cropGithubGifs(cli.input[0]);
+const path = cli.input[0];
+if (path.endsWith(".gif")) {
+  cropGif(path);
 } else {
-  cropGithubImages(cli.input[0]);
+  cropImage(path);
 }
