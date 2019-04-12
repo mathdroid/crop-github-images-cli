@@ -16,15 +16,17 @@ To
 
 ![](result.png)
 
+See examples for example results.
+
 ## Requirements
 
 Node >= 8
 
 `npm`/`npx`
 
-## Issue
+## Notes
 
-Right now, images MUST have width of EXACTLY 727px, and minimum height of 513px. You can use resizer or cropper before using the CLI. Image will be cropped from the top left.
+Images will be automatically resized to be 727xauto.
 
 ## How to pin them in Github
 
