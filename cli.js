@@ -1,12 +1,21 @@
 #!/usr/bin/env node
 "use strict";
 
-const Clipper = require("image-clipper");
-const canvas = require("canvas");
-const { GifFrame, GifUtil } = require("gifwrap");
+const { GifFrame, GifUtil, BitmapImage } = require("gifwrap");
 const Jimp = require("jimp");
 const updateNotifier = require("update-notifier");
 const meow = require("meow");
+
+const CONTAINER_WIDTH = 727;
+const CUT_WIDTH = 325;
+const CUT_HEIGHT = 100;
+const CARD_PADDING_TOP = 37;
+const CARD_PADDING_HORIZONTAL = 16;
+const CARD_PADDING_BOTTOM = 16;
+const CARD_MARGIN_BOTTOM = 16;
+const CARD_HEIGHT = CARD_PADDING_TOP + CUT_HEIGHT + CARD_PADDING_BOTTOM;
+const Y_OFFSET = CARD_HEIGHT + CARD_MARGIN_BOTTOM;
+const MINIMUM_HEIGHT = 3 * CARD_HEIGHT + 2 * CARD_MARGIN_BOTTOM;
 
 const cli = meow(
   `
@@ -23,66 +32,94 @@ const cli = meow(
 updateNotifier({ pkg: cli.pkg }).notify();
 
 if (cli.input.length === 0) {
-  console.error("Specify at least one path");
+  console.error("Specify exactly one path to the image/gif");
   process.exit(1);
 }
 
-const cropGithubGifs = path => {
-  const GIF_WIDTH = 325;
-  const GIF_HEIGHT = 100;
-  const VERTICAL_MARGIN = 53;
-  const HORIZONTAL_MARGIN = 32;
-
-  GifUtil.read(path)
-    .then(source => {
-      let croppedGifs = [];
-
-      for (let i = 0; i < 6; i++) {
-        const isLeft = i % 2 === 0;
-        const x = isLeft ? 0 : GIF_WIDTH + HORIZONTAL_MARGIN;
-        const y = Math.floor(i / 2) * (GIF_HEIGHT + VERTICAL_MARGIN);
-
-        let gif = [];
-        for (let frame = 0; frame < source.frames.length; frame++) {
-          let j = new Jimp(
-            source.frames[frame].bitmap.width,
-            source.frames[frame].bitmap.height,
-            0
-          );
-          j.bitmap.data = source.frames[frame].bitmap.data;
-          j.resize(GIF_WIDTH * 2 + HORIZONTAL_MARGIN, GIF_HEIGHT * 3 + VERTICAL_MARGIN * 2)
-            .crop(x, y, GIF_WIDTH, GIF_HEIGHT);
-          gif[frame] = new GifFrame(j.bitmap);
-        }      
-        croppedGifs.push(gif);
-      }
-
-      croppedGifs.forEach((gif, i) => {
-        GifUtil.quantizeDekker(gif);
-        GifUtil.write(`${i}.gif`, gif).then(result => {
-          console.log(`saved ${i}.gif`);
-        });
-      });
-    })
-    .catch(console.error); 
+const getXY = index => {
+  const isLeft = index % 2 === 0;
+  // There is no margin between cards, instead, they are
+  // separated by flex's space-between, which is directly
+  // affected by container width. When someday container
+  // width changes, we can just change its value and this
+  // method will be fixed.
+  const x = isLeft
+    ? CARD_PADDING_HORIZONTAL
+    : CONTAINER_WIDTH - (CARD_PADDING_HORIZONTAL + CUT_WIDTH);
+  const indexFromTop = Math.floor(index / 2);
+  const y = CARD_PADDING_TOP + indexFromTop * Y_OFFSET;
+  return { x, y };
 };
 
-const WIDTH = 727;
-const INTERVAL = 171;
-
-const cropGithubImages = path => {
-  const clipper = Clipper({ canvas });
-
+const cropFrame = image => {
+  const cropped = [];
   for (let i = 0; i < 6; i++) {
-    const isLeft = i % 2 === 0;
-    const x = isLeft ? 16 : WIDTH - 16 - 325;
-    const y = 53 + INTERVAL * Math.floor(i / 2 + 0.1);
-    clipper.image(path, function() {
-      const name = `${i}.jpg`;
-      this.crop(x, y, 325, 100).toFile(`./${name}`, function() {
-        console.log(`saved ${name}`);
+    const clone = image.clone();
+    const { x, y } = getXY(i);
+    clone.crop(x, y, CUT_WIDTH, CUT_HEIGHT);
+    cropped.push(clone);
+  }
+  return cropped;
+};
+
+const cropGithubGifs = async path => {
+  try {
+    const source = await GifUtil.read(path);
+    const { frames } = source;
+    let croppedGifs = [];
+    let frameIndex = 1;
+    for (const frame of frames) {
+      console.log(`Processing frame ${frameIndex} of ${frames.length}`);
+      const buf = frame.bitmap.data;
+      frame.scanAllCoords((x, y, bi) => {
+        buf[bi + 3] = 0xff;
       });
+
+      let jimpToCrop = new Jimp(frame.bitmap.width, frame.bitmap.height, 0);
+      jimpToCrop.bitmap.data = frame.bitmap.data;
+      jimpToCrop.resize(CONTAINER_WIDTH, Jimp.AUTO);
+
+      const frameToCrop = await Jimp.read(jimpToCrop);
+
+      const cropped = cropFrame(frameToCrop).map(img => {
+        return new GifFrame(img.bitmap);
+      });
+
+      cropped.forEach((croppedFrame, i) => {
+        croppedFrame.scanAllCoords((x, y, bi) => {
+          buf[bi + 3] = 0xff;
+        });
+        croppedGifs[i] = croppedGifs[i]
+          ? [...croppedGifs[i], croppedFrame]
+          : [croppedFrame];
+      });
+
+      frameIndex++;
+    }
+
+    croppedGifs.forEach(async (croppedFrames, i) => {
+      console.log(
+        `Quantizing Dekker value for gif ${i} (this might take a while)`
+      );
+      GifUtil.quantizeDekker(croppedFrames);
+      await GifUtil.write(`${i}.gif`, croppedFrames);
+      console.log(`saved ${i}.gif`);
     });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const cropGithubImages = async path => {
+  const image = await Jimp.read(path);
+
+  image.resize(CONTAINER_WIDTH, Jimp.AUTO);
+  const cropped = cropFrame(image);
+
+  for (let i = 0; i < cropped.length; i++) {
+    const clone = cropped[i];
+    await clone.writeAsync(`${i}.jpg`);
+    console.log(i, "has been written.");
   }
 };
 
