@@ -7,9 +7,7 @@
   "bin": {
     "crop-github-images": "cli.js"
   },
-  "scripts": {
-    "test": "ava"
-  },
+  "scripts": {},
   "engines": {
     "node": ">=8"
   },
