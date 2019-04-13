@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 "use strict";
+
 const { parse, resolve } = require("path");
+const fs = require("fs");
 
 const sharp = require("sharp");
 const execa = require("execa");
@@ -10,7 +12,7 @@ const meow = require("meow");
 const got = require("got");
 const cp = require("cp-file");
 
-const { cloneGistPath, addAll, commitAll, push } = require("./git-util");
+const { cloneGistPath, commitAll, push } = require("./git-util");
 
 const CONTAINER_WIDTH = 727;
 const CUT_WIDTH = 325;
@@ -147,14 +149,21 @@ const crop = async (path, githubToken) => {
           body
         });
         const data = JSON.parse(res);
-        console.log(`Gist for ${file} has been created in ${data.html_url}`);
+        console.log(`Prepared the gist for ${file} in ${data.html_url}`);
         await cloneGistPath(data.id);
         await cp(file, `${data.id}/${file}`);
         const gitPath = resolve(`./${data.id}/.git`);
-        await addAll(gitPath);
         await commitAll(gitPath);
+        fs.writeFileSync(
+          `${data.id}/.netrc`,
+          `machine github.com\nlogin ${
+            data.owner.login
+          }\npassword ${githubToken}`
+        );
         await push(gitPath);
-        console.log(`${isGif ? "GIF" : "Image"} has been added to the gist`);
+        console.log(
+          `${isGif ? "GIF" : "Image"} ${file} has been added to the gist`
+        );
       }
     } catch (e) {
       console.error(e);
