@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 "use strict";
+const { parse, resolve } = require("path");
 
 const sharp = require("sharp");
 const execa = require("execa");
 const gifsicle = require("gifsicle");
 const updateNotifier = require("update-notifier");
 const meow = require("meow");
+const got = require("got");
+const cp = require("cp-file");
+
+const { cloneGistPath, addAll, commitAll, push } = require("./git-util");
 
 const CONTAINER_WIDTH = 727;
 const CUT_WIDTH = 325;
@@ -26,7 +31,12 @@ const cli = meow(
 	  $ crop-github-images unicorn.png 
 `,
   {
-    string: ["_"]
+    flags: {
+      "github-token": {
+        type: "string",
+        alias: "t"
+      }
+    }
   }
 );
 
@@ -54,7 +64,7 @@ const getXY = index => {
 
 const cropImage = async path => {
   try {
-    const ext = path.split(".").reverse()[0];
+    const { ext } = parse(path);
     const image = sharp(path);
     const { width, height } = await image.metadata();
     const resizeOpts =
@@ -62,6 +72,7 @@ const cropImage = async path => {
         ? { width: CONTAINER_WIDTH, height: MINIMUM_HEIGHT, fit: "outside" }
         : { width: CONTAINER_WIDTH };
     const resized = image.clone().resize(resizeOpts);
+    const files = [];
     for (let i = 0; i < 6; i++) {
       const filename = `${i}.${ext}`;
       const { x, y } = getXY(i);
@@ -70,37 +81,88 @@ const cropImage = async path => {
         .extract({ left: x, top: y, width: CUT_WIDTH, height: CUT_HEIGHT })
         .toFile(filename);
       console.log(`Successfully cropped ${filename}.`);
+      files.push(filename);
     }
+    return files;
   } catch (e) {
     console.error(e);
   }
 };
 
 const cropGif = async path => {
-  const { width, height } = await sharp(path).metadata();
-  const resizeOpts =
-    width / height >= CONTAINER_WIDTH / MINIMUM_HEIGHT
-      ? ["--resize", "_x513"]
-      : ["--resize", "727x_"];
-  const resized = "resized.gif";
-  await execa(gifsicle, [...resizeOpts, "-o", resized, path]);
-  for (let i = 0; i < 6; i++) {
-    const filename = `${i}.gif`;
-    const { x, y } = getXY(i);
-    await execa(gifsicle, [
-      "--crop",
-      `${x},${y}+${CUT_WIDTH}x${CUT_HEIGHT}`,
-      "-o",
-      filename,
-      resized
-    ]);
-    console.log(`Successfully cropped ${filename}.`);
+  try {
+    const { width, height } = await sharp(path).metadata();
+    const resizeOpts =
+      width / height >= CONTAINER_WIDTH / MINIMUM_HEIGHT
+        ? ["--resize", "_x513"]
+        : ["--resize", "727x_"];
+    const resized = "resized.gif";
+    await execa(gifsicle, [...resizeOpts, "-o", resized, path]);
+    const files = [];
+    for (let i = 0; i < 6; i++) {
+      const filename = `${i}.gif`;
+      const { x, y } = getXY(i);
+      await execa(gifsicle, [
+        "--crop",
+        `${x},${y}+${CUT_WIDTH}x${CUT_HEIGHT}`,
+        "-o",
+        filename,
+        resized
+      ]);
+      console.log(`Successfully cropped ${filename}.`);
+      files.push(filename);
+    }
+    return files;
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const crop = async (path, githubToken) => {
+  let files = [];
+  const isGif = path.endsWith(".gif");
+  if (isGif) {
+    files = await cropGif(path);
+  } else {
+    files = await cropImage(path);
+  }
+  if (githubToken) {
+    try {
+      for (const file of files) {
+        const files = {
+          [file]: {
+            content: "Hello"
+          }
+        };
+        const body = JSON.stringify({
+          description: `Gist for ${file}`,
+          public: true,
+          files
+        });
+        const { body: res } = await got.post("gists", {
+          baseUrl: "https://api.github.com",
+          headers: {
+            Authorization: `token ${githubToken}`
+          },
+          body
+        });
+        const data = JSON.parse(res);
+        console.log(`Gist for ${file} has been created in ${data.html_url}`);
+        await cloneGistPath(data.id);
+        await cp(file, `${data.id}/${file}`);
+        const gitPath = resolve(`./${data.id}/.git`);
+        await addAll(gitPath);
+        await commitAll(gitPath);
+        await push(gitPath);
+        console.log(`${isGif ? "GIF" : "Image"} has been added to the gist`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }
 };
 
 const path = cli.input[0];
-if (path.endsWith(".gif")) {
-  cropGif(path);
-} else {
-  cropImage(path);
-}
+const { githubToken } = cli.flags;
+
+crop(path, githubToken);
