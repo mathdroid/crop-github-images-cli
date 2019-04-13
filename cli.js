@@ -54,12 +54,18 @@ const getXY = index => {
 
 const cropImage = async path => {
   try {
-    const [ext, ...rest] = path.split(".").reverse();
-    const image = sharp(path).resize(CONTAINER_WIDTH);
+    const ext = path.split(".").reverse()[0];
+    const image = sharp(path);
+    const { width, height } = await image.metadata();
+    const resizeOpts =
+      width / height >= CONTAINER_WIDTH / MINIMUM_HEIGHT
+        ? { width: CONTAINER_WIDTH, height: MINIMUM_HEIGHT, fit: "outside" }
+        : { width: CONTAINER_WIDTH };
+    const resized = image.clone().resize(resizeOpts);
     for (let i = 0; i < 6; i++) {
       const filename = `${i}.${ext}`;
       const { x, y } = getXY(i);
-      await image
+      await resized
         .clone()
         .extract({ left: x, top: y, width: CUT_WIDTH, height: CUT_HEIGHT })
         .toFile(filename);
@@ -71,15 +77,20 @@ const cropImage = async path => {
 };
 
 const cropGif = async path => {
+  const { width, height } = await sharp(path).metadata();
+  const resizeOpts =
+    width / height >= CONTAINER_WIDTH / MINIMUM_HEIGHT
+      ? ["--resize", "_x513"]
+      : ["--resize", "727x_"];
   const resized = "resized.gif";
-  await execa(gifsicle, ["--resize", "727x_", "-o", resized, path]);
+  await execa(gifsicle, [...resizeOpts, "-o", resized, path]);
   for (let i = 0; i < 6; i++) {
     const filename = `${i}.gif`;
     const { x, y } = getXY(i);
     await execa(gifsicle, [
       "--crop",
       `${x},${y}+${CUT_WIDTH}x${CUT_HEIGHT}`,
-      "--output",
+      "-o",
       filename,
       resized
     ]);
