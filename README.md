@@ -24,6 +24,10 @@ Node >= 8
 
 `npm`/`npx`
 
+## Auto Post to GitHub Gists
+
+Supply a [Personal Access Token](https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line) in `--github-token|-t` option to automatically create gists from the cropped asset.
+
 ## Notes
 
 Images will be automatically resized to be 727xauto.
