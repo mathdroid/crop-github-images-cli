@@ -5,7 +5,7 @@
 ## Usage
 
 ```sh
-$ npx crop-github-images-cli <path-to-image-or-gif>
+$ npx crop-github-images-cli <path-to-image-or-gif> [--github-token|-t <Personal Access Token>]
 ```
 
 From
