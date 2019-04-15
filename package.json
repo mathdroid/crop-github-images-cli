@@ -33,9 +33,11 @@
     "got": "^9.6.0",
     "meow": "^5.0.0",
     "sharp": "^0.22.0",
+    "trash": "^5.2.0",
     "update-notifier": "^2.5.0"
   },
   "devDependencies": {
-    "ava": "^1.4.1"
+    "ava": "^1.4.1",
+    "np": "^4.0.2"
   }
 }
