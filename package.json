@@ -12,7 +12,8 @@
     "node": ">=8"
   },
   "files": [
-    "cli.js"
+    "cli.js",
+    "git-util.js"
   ],
   "keywords": [
     "cli-app",
