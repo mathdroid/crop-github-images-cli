@@ -1,4 +1,4 @@
-# `crop-github-images-cli`
+# ✂️ `crop-github-images-cli`
 
 > Crop your images and gifs for your GitHub Profile!
 
