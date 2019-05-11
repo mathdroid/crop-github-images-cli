@@ -15,8 +15,8 @@ const trash = require("trash");
 
 const { cloneGistPath, commitAll, push } = require("./git-util");
 
-const CONTAINER_WIDTH = 727;
-const CUT_WIDTH = 325;
+const CONTAINER_WIDTH = 892;
+const CUT_WIDTH = 404;
 const CUT_HEIGHT = 100;
 const CARD_PADDING_TOP = 37;
 const CARD_PADDING_HORIZONTAL = 16;
@@ -98,8 +98,8 @@ const cropGif = async path => {
     const { width, height } = await sharp(path).metadata();
     const resizeOpts =
       width / height >= CONTAINER_WIDTH / MINIMUM_HEIGHT
-        ? ["--resize", "_x513"]
-        : ["--resize", "727x_"];
+        ? ["--resize", `_x${MINIMUM_HEIGHT}`]
+        : ["--resize", `${CONTAINER_WIDTH}x_`];
     const resized = "resized.gif";
     await execa(gifsicle, [...resizeOpts, "-o", resized, path]);
     const files = [];
