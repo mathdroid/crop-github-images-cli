@@ -54,9 +54,7 @@ const getXY = index => {
   const isLeft = index % 2 === 0;
   // There is no margin between cards, instead, they are
   // separated by flex's space-between, which is directly
-  // affected by container width. When someday container
-  // width changes, we can just change its value and this
-  // method will be fixed.
+  // affected by container width.
   const x = isLeft
     ? CARD_PADDING_HORIZONTAL
     : CONTAINER_WIDTH - (CARD_PADDING_HORIZONTAL + CUT_WIDTH);
@@ -96,19 +94,29 @@ const cropGif = async path => {
   try {
     const { name } = parse(path);
     const { width, height } = await sharp(path).metadata();
-    const resizeOpts =
-      width / height >= CONTAINER_WIDTH / MINIMUM_HEIGHT
-        ? ["--resize", `_x${MINIMUM_HEIGHT}`]
-        : ["--resize", `${CONTAINER_WIDTH}x_`];
+    const dimension = width / height;
+    const BASE_DIMENSION = CONTAINER_WIDTH / MINIMUM_HEIGHT;
+    const isWider = dimension >= BASE_DIMENSION;
+
+    const resizeOpts = isWider
+      ? ["--resize", `_x${MINIMUM_HEIGHT}`]
+      : ["--resize", `${CONTAINER_WIDTH}x_`];
+
     const resized = "resized.gif";
     await execa(gifsicle, [...resizeOpts, "-o", resized, path]);
+    const { width: newWidth, height: newHeight } = await sharp(
+      resized
+    ).metadata();
+
+    const offsetX = (newWidth - CONTAINER_WIDTH) / 2;
+    const offsetY = (newHeight - MINIMUM_HEIGHT) / 2;
     const files = [];
     for (let i = 0; i < 6; i++) {
       const filename = `${name}.${i}.gif`;
       const { x, y } = getXY(i);
       await execa(gifsicle, [
         "--crop",
-        `${x},${y}+${CUT_WIDTH}x${CUT_HEIGHT}`,
+        `${x + offsetX},${y + offsetY}+${CUT_WIDTH}x${CUT_HEIGHT}`,
         "-o",
         filename,
         resized
