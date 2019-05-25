@@ -15,8 +15,8 @@ const trash = require("trash");
 
 const { cloneGistPath, commitAll, push } = require("./git-util");
 
-const CONTAINER_WIDTH = 892;
-const CUT_WIDTH = 404;
+const CONTAINER_WIDTH = 928;
+const CUT_WIDTH = 422;
 const CUT_HEIGHT = 100;
 const CARD_PADDING_TOP = 37;
 const CARD_PADDING_HORIZONTAL = 16;
