@@ -107,16 +107,25 @@ const cropGif = async path => {
     const { width: newWidth, height: newHeight } = await sharp(
       resized
     ).metadata();
+    // console.log({ newWidth, newHeight });
 
-    const offsetX = (newWidth - CONTAINER_WIDTH) / 2;
-    const offsetY = (newHeight - MINIMUM_HEIGHT) / 2;
+    const offsetX = Math.floor((newWidth - CONTAINER_WIDTH) / 2);
+    const offsetY = Math.floor((newHeight - MINIMUM_HEIGHT) / 2);
     const files = [];
     for (let i = 0; i < 6; i++) {
       const filename = `${name}.${i}.gif`;
       const { x, y } = getXY(i);
+      const xPos = x + offsetX;
+      const yPos = y + offsetY;
+      // console.log({
+      //   xPos,
+      //   yPos,
+      //   CUT_WIDTH,
+      //   CUT_HEIGHT
+      // });
       await execa(gifsicle, [
         "--crop",
-        `${x + offsetX},${y + offsetY}+${CUT_WIDTH}x${CUT_HEIGHT}`,
+        `${xPos},${yPos}+${CUT_WIDTH}x${CUT_HEIGHT}`,
         "-o",
         filename,
         resized
