@@ -1,6 +1,6 @@
 {
   "name": "crop-github-images-cli",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "main": "index.js",
   "license": "MIT",
   "repository": "mathdroid/crop-github-images-cli",
